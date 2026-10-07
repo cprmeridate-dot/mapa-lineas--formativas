@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Formativa · CPR Mérida · 1er Trimestre</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: ['class', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    colors: {
+                        l1: '#E30613', l2: '#0072CE', l3: '#B8901F', l4: '#E83E8C',
+                        l5: '#8A2BE2', l6: '#00A651', l7: '#F39200', l8: '#A67B5B',
+                        l9: '#0EA5E9', l10: '#FA8072', l11: '#EAB308', l12: '#0B2545'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --fg: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --grid: rgba(148, 163, 184, 0.16);
+            --panel: rgba(255, 255, 255, 0.94);
+            --l1: #E30613; --l2: #0072CE; --l3: #B8901F; --l4: #E83E8C;
+            --l5: #8A2BE2; --l6: #00A651; --l7: #F39200; --l8: #A67B5B;
+            --l9: #0EA5E9; --l10: #FA8072; --l11: #EAB308; --l12: #0B2545;
+            --accent: #0072CE;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0b1220;
+            --surface: #0f172a;
+            --fg: #e2e8f0;
+            --muted: #94a3b8;
+            --border: #1e293b;
+            --grid: rgba(148, 163, 184, 0.08);
+            --panel: rgba(15, 23, 42, 0.94);
+            --l3: #E5C158; --l8: #C4A484; --l11: #F5C518; --l12: #5B8DEF;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--fg);
+            user-select: none;
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Map Grid Background */
+        .map-bg-grid {
+            background-image: radial-gradient(circle, var(--grid) 1.2px, transparent 1.2px);
+            background-size: 28px 28px;
+        }
+
+        /* SVG Line Transitions */
+        .line-path {
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: opacity 0.35s ease, stroke-width 0.25s ease;
+        }
+        .line-path.dim { opacity: 0.08 !important; }
+        .line-path.shadow {
+            stroke: rgba(0, 0, 0, 0.06);
+            stroke-width: 14;
+        }
+
+        /* Station Node Styling - Anti-flicker target area */
+        .station-group {
+            cursor: pointer;
+            pointer-events: bounding-box;
+        }
+        .station-node-visual {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), fill 0.2s, stroke 0.2s;
+            transform-box: fill-box;
+            transform-origin: center;
+        }
+        .station-group:hover .station-node-visual {
+            transform: scale(1.45);
+        }
+
+        /* Pulse Animation for Selected Course */
+        @keyframes stationPulse {
+            0% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.6); opacity: 0.4; }
+            100% { transform: scale(1); opacity: 0.9; }
+        }
+        .pulse-ring {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: stationPulse 1.8s infinite ease-in-out;
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: var(--panel);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-color: var(--border);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.35);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.6); }
+
+        /* Tooltip Guard */
+        #station-tooltip {
+            pointer-events: none !important;
+            will-change: transform, opacity;
+        }
+
+        /* Clean Map / WordPress Embed Mode */
+        body.clean-map-mode header,
+        body.clean-map-mode #sidebar,
+        body.clean-map-mode .map-controls-panel,
+        body.clean-map-mode .timeline-legend-box,
+        body.clean-map-mode .legend-badge-box {
+            display: none !important;
+        }
+        body.clean-map-mode #map-wrap {
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+
+        /* WordPress iFrame & Responsive Parent Protection */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            min-height: 500px;
+        }
+
+        /* PRINT STYLES - PDF GENERATION FORMAT */
+        #print-view { display: none; }
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+                overflow: visible !important;
+                height: auto !important;
+            }
+            header, aside, #map-wrap, #course-modal, #info-modal, #station-tooltip, .no-print {
+                display: none !important;
+            }
+            #print-view {
+                display: block !important;
+                padding: 24px;
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col antialiased">
+
+    <!-- TOP HEADER -->
+    <header class="h-16 bg-[var(--surface)] border-b border-[var(--border)] px-4 md:px-6 flex items-center justify-between z-30 shrink-0 shadow-sm">
+        <div class="flex items-center gap-3">
+            <button onclick="toggleMobileSidebar()" class="md:hidden w-9 h-9 rounded-xl border border-[var(--border)] flex items-center justify-center text-[var(--fg)]">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            
+            <!-- CPR Mérida Logo -->
+            <div class="flex items-center gap-2.5">
+                <img src="https://res.cloudinary.com/dilbphzzy/image/upload/v1762517427/logo_cpr_rsnqs9.png" 
+                     alt="Logo CPR de Mérida" 
+                     class="h-9 w-auto object-contain bg-white/80 p-0.5 rounded-lg border border-slate-200 shadow-sm"
+                     onerror="this.style.display='none'; document.getElementById('fallback-logo-icon').style.display='flex';">
+                
+                <div id="fallback-logo-icon" class="hidden w-9 h-9 rounded-xl items-center justify-center text-white text-lg font-black shadow-md" style="background: conic-gradient(from 200deg, var(--l2), var(--l6), var(--l7), var(--l5), var(--l2));">
+                    <i class="fa-solid fa-subway"></i>
+                </div>
+            </div>
+
+            <div>
+                <h1 class="font-extrabold text-xs md:text-sm leading-tight text-[var(--fg)] flex items-center gap-2">
+                    Red Formativa · CPR Mérida
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 hidden lg:inline-block">1er Trimestre 2026</span>
+                </h1>
+                <p class="text-[11px] text-[var(--muted)] font-medium hidden sm:block">46 Actividades Formativas Oficiales</p>
+            </div>
+        </div>
+
+        <!-- Unified Mode Switcher Tabs -->
+        <div class="bg-[var(--bg)] p-1 rounded-xl border border-[var(--border)] flex items-center gap-1">
+            <button id="tab-btn-map" onclick="setAppMode('map')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-[var(--surface)] text-[var(--fg)] shadow-sm transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-map-location-dot"></i> <span class="hidden md:inline">Mapa de Líneas</span>
+            </button>
+            <button id="tab-btn-plan" onclick="setAppMode('plan')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg text-[var(--muted)] hover:text-[var(--fg)] transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-chart-pie"></i> <span class="hidden md:inline">Mi Plan y Progreso</span>
+                <span id="plan-badge-count" class="hidden ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] bg-blue-600 text-white font-black">0</span>
+            </button>
+        </div>
+
+        <!-- Controls & Information Button -->
+        <div class="flex items-center gap-2">
+            <!-- CLEAN MAP TOGGLE BUTTON -->
+            <button onclick="toggleCleanMapMode()" title="Modo Solo Mapa (Ocultar Paneles)" class="px-3 py-1.5 text-xs font-bold rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--bg)] flex items-center gap-1.5 transition-colors shadow-sm">
+                <i class="fa-solid fa-expand text-indigo-500"></i>
+                <span class="hidden xl:inline">Solo Mapa</span>
+            </button>
+
+            <!-- IMPORTANT INFO BUTTON -->
+            <button onclick="toggleInfoModal()" title="Información Importante y Guía de Uso" class="px-3 py-1.5 text-xs font-bold rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 flex items-center gap-1.5 transition-colors shadow-sm">
+                <i class="fa-solid fa-circle-info text-blue-600 dark:text-blue-400"></i>
+                <span class="hidden sm:inline">Información Importante</span>
+            </button>
+
+            <button onclick="toggleTheme()" title="Cambiar Tema (Claro/Oscuro)" class="w-9 h-9 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--bg)] flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-moon dark:hidden"></i>
+                <i class="fa-solid fa-sun hidden dark:block text-amber-400"></i>
+            </button>
+            <button onclick="resetMapView()" title="Centrar Vista Mapa" class="w-9 h-9 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--bg)] flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-crosshairs"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- LEFT SIDEBAR -->
+        <aside id="sidebar" class="w-80 md:w-96 glass-panel border-r border-[var(--border)] flex flex-col z-20 transition-transform duration-300 transform md:translate-x-0 absolute md:relative inset-y-0 left-0 h-full shadow-xl md:shadow-none">
+            
+            <!-- Search bar -->
+            <div class="p-3.5 border-b border-[var(--border)] flex items-center gap-2">
+                <div class="relative w-full">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] text-xs"></i>
+                    <input type="text" id="sidebar-search-input" oninput="handleSearch(this.value)" placeholder="Buscar curso, código o tema..." 
+                           class="w-full pl-8 pr-8 py-2 rounded-xl text-xs bg-[var(--bg)] border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-blue-500 text-[var(--fg)] font-medium">
+                    <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--fg)] text-xs">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dynamic Sidebar Content -->
+            <div id="sidebar-dynamic-content" class="flex-1 overflow-y-auto p-4 space-y-4">
+                <!-- Content injected via JS -->
+            </div>
+        </aside>
+
+        <!-- MAP CANVAS WORKSPACE -->
+        <main id="map-wrap" class="flex-1 relative overflow-hidden map-bg-grid flex items-center justify-center bg-[var(--bg)]">
+            
+            <div id="map-viewport" class="w-full h-full cursor-grab active:cursor-grabbing flex items-center justify-center overflow-hidden relative">
+                <svg id="metro-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" class="w-full h-full transition-transform duration-100 ease-out">
+                    <defs>
+                        <filter id="glow-effect" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="4" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                        <filter id="node-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                            <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-opacity="0.25"/>
+                        </filter>
+                    </defs>
+
+                    <!-- SVG Layers -->
+                    <g id="layer-line-shadows"></g>
+                    <g id="layer-lines"></g>
+                    <g id="layer-trains"></g>
+                    <g id="layer-stations"></g>
+                    <g id="layer-terminals"></g>
+                </svg>
+            </div>
+
+            <!-- Timeline Legend Box -->
+            <div class="timeline-legend-box absolute top-4 right-4 bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-3 backdrop-blur-md shadow-lg text-xs flex flex-col gap-1.5 min-w-[210px] hidden sm:flex">
+                <div class="text-[10px] font-extrabold uppercase tracking-wider text-[var(--muted)]">Distribución Cronológica</div>
+                <div class="h-2 rounded-full bg-gradient-to-r from-sky-500 via-emerald-500 via-amber-500 to-rose-500 w-full mt-0.5"></div>
+                <div class="flex justify-between text-[10px] font-bold text-[var(--muted)]">
+                    <span>23 SEP 2026</span>
+                    <span>18 DIC 2026</span>
+                </div>
+            </div>
+
+            <!-- Canvas Controls -->
+            <div class="map-controls-panel absolute bottom-5 right-5 flex flex-col gap-2 z-10 bg-[var(--panel)] p-1.5 rounded-2xl shadow-xl border border-[var(--border)]">
+                <button onclick="zoomIn()" title="Acercar mapa" class="w-9 h-9 rounded-xl hover:bg-[var(--bg)] flex items-center justify-center text-[var(--fg)] font-bold transition-colors">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+                <button onclick="zoomOut()" title="Alejar mapa" class="w-9 h-9 rounded-xl hover:bg-[var(--bg)] flex items-center justify-center text-[var(--fg)] font-bold transition-colors">
+                    <i class="fa-solid fa-minus"></i>
+                </button>
+                <div class="h-px bg-[var(--border)] mx-1"></div>
+                <button onclick="toggleTrains()" id="btn-train-toggle" title="Alternar Trenes Animados" class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-train"></i>
+                </button>
+                <button onclick="toggleCleanMapMode()" title="Restablecer o Alternar Vistas" class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-eye"></i>
+                </button>
+            </div>
+
+            <!-- Legend Badge -->
+            <div class="legend-badge-box absolute bottom-5 left-5 bg-[var(--panel)] border border-[var(--border)] rounded-2xl px-3 py-2 backdrop-blur-md shadow-md text-[11px] font-semibold text-[var(--muted)] flex items-center gap-4 hidden md:flex">
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white ring-2 ring-blue-500/30 inline-block"></span>
+                    <span class="text-[var(--fg)] font-bold">En Mi Plan</span>
+                </div>
+            </div>
+
+            <!-- Hover Tooltip -->
+            <div id="station-tooltip" class="fixed z-50 bg-[var(--fg)] text-[var(--bg)] text-xs py-2 px-3 rounded-xl shadow-2xl backdrop-blur-md transition-opacity duration-150 opacity-0 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-3 flex flex-col gap-0.5 border border-slate-700 max-w-xs">
+                <div id="tooltip-code" class="text-[10px] font-mono font-bold text-blue-400">#00000</div>
+                <div id="tooltip-title" class="font-bold text-xs leading-snug">Nombre del Curso</div>
+                <div id="tooltip-line" class="text-[10px] opacity-80 mt-0.5">Línea</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- IMPORTANT INFO MODAL -->
+    <div id="info-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-250 opacity-0 pointer-events-none">
+        <div id="info-modal-container" class="w-full max-w-2xl bg-[var(--surface)] rounded-3xl shadow-2xl border border-[var(--border)] flex flex-col max-h-[88vh] overflow-hidden transform scale-95 transition-transform duration-250">
+            
+            <!-- Modal Header -->
+            <div class="p-5 border-b border-[var(--border)] bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base md:text-lg font-extrabold leading-tight">Información y Guía de Uso</h2>
+                        <p class="text-xs text-blue-100 font-medium">Planificador Formativo · CPR de Mérida</p>
+                    </div>
+                </div>
+                <button onclick="toggleInfoModal()" class="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div class="p-6 overflow-y-auto space-y-6 text-xs md:text-sm text-[var(--fg)] leading-relaxed">
+                
+                <!-- Section 1: Asesoramiento Pedagógico -->
+                <div class="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 space-y-2">
+                    <div class="flex items-center gap-2 text-blue-900 dark:text-blue-200 font-extrabold text-sm">
+                        <i class="fa-solid fa-compass text-blue-600 dark:text-blue-400"></i>
+                        <span>1. Asesoramiento Pedagógico e Itinerarios de Especialización</span>
+                    </div>
+                    <ul class="space-y-1.5 text-[11.5px] text-slate-700 dark:text-slate-200 pl-6 list-disc">
+                        <li>Esta herramienta nace para ofrecer un <strong>asesoramiento visual e intuitivo</strong> que ayude a la comunidad docente a tomar decisiones estratégicas sobre su desarrollo profesional.</li>
+                        <li><strong>Recomendación Pedagógica:</strong> Para lograr un impacto real en la práctica de aula, se aconseja orientar la formación hacia <strong>2 o 3 líneas prioritarias por trimestre</strong> (por ejemplo: <em>Metodologías Activas</em>, <em>Atención a la Diversidad</em> o <em>Tecnología Educativa</em>), profundizando en ellas en lugar de realizar cursos aislados sin conexión entre sí (<em>«Es mejor especializarse con profundidad en 2-3 áreas que dispersar esfuerzos»</em>).</li>
+                    </ul>
+                </div>
+
+                <!-- Section 2: Guardar plan y Calendario -->
+                <div class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 space-y-2">
+                    <div class="flex items-center gap-2 text-emerald-900 dark:text-emerald-200 font-extrabold text-sm">
+                        <i class="fa-solid fa-floppy-disk text-emerald-600 dark:text-emerald-400"></i>
+                        <span>2. ¿Cómo guardar tu plan y añadirlo a tu Calendario?</span>
+                    </div>
+                    <ul class="space-y-1.5 text-[11.5px] text-slate-700 dark:text-slate-200 pl-6 list-disc">
+                        <li><strong>Almacenamiento Local y Privado:</strong> Los cursos que seleccionas se guardan de forma privada en la memoria de tu propio navegador (<code>localStorage</code>). Ningún otro usuario podrá ver tu itinerario ni tus datos.</li>
+                        <li><strong>Guardar y Cargar tu Archivo (.json):</strong> Si cambias de ordenador, usas un equipo compartido del centro o borras el historial de tu navegador, perderás los cambios no exportados. Para evitarlo, utiliza el botón <strong>«Guardar (.json)»</strong> dentro de <em>Mi Plan</em>. Podrás recuperar tu borrador en cualquier momento pulsando en <strong>«Cargar Plan Guardado»</strong>.</li>
+                        <li><strong>Exportar a PDF:</strong> Haz clic en <strong>«Guardar PDF / Imprimir»</strong> para generar un documento A4 con el resumen completo de tu itinerario, gráfica de progreso y recomendaciones.</li>
+                        <li><strong>Sincronización con Calendarios (Google / iOS / iCal):</strong> Puedes agendar actividades individuales o todo tu plan completo pulsando los botones de <strong>Google Calendar</strong> o <strong>Calendario iOS/iCal (.ics)</strong> para incorporar automáticamente las fechas a la agenda de tu móvil o PC.</li>
+                    </ul>
+                </div>
+
+                <!-- Section 3: Inscripción Oficial -->
+                <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 space-y-2">
+                    <div class="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-extrabold text-sm">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i>
+                        <span>3. Importante: Inscripción Oficial en los Cursos</span>
+                    </div>
+                    <ul class="space-y-1.5 text-[11.5px] text-slate-700 dark:text-slate-200 pl-6 list-disc">
+                        <li><strong>Esta herramienta es un mapa orientativo y de planificación personal:</strong> Seleccionar o añadir actividades a <em>«Mi Plan»</em> en esta plataforma <strong>NO constituye una inscripción ni reserva de plaza</strong>.</li>
+                        <li><strong>Proceso de Inscripción Oficial:</strong> La inscripción real debe realizarse exclusivamente a través de la plataforma oficial de la <strong>Red Formativa del Profesorado (RFP)</strong> dentro de los plazos oficiales de solicitud establecidos por el CPR de Mérida y publicados en su web oficial.</li>
+                    </ul>
+                </div>
+
+                <!-- Section 4: Certificación y Titulación -->
+                <div class="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60 space-y-2">
+                    <div class="flex items-center gap-2 text-purple-900 dark:text-purple-200 font-extrabold text-sm">
+                        <i class="fa-solid fa-graduation-cap text-purple-600 dark:text-purple-400"></i>
+                        <span>4. Certificación y Titulación</span>
+                    </div>
+                    <ul class="space-y-1.5 text-[11.5px] text-slate-700 dark:text-slate-200 pl-6 list-disc">
+                        <li>El diseño de itinerarios a través de este mapa no otorga ninguna titulación académica o profesional extra por sí mismo.</li>
+                        <li>Cada actividad completada se certificará de manera individual con sus correspondientes horas homologadas, según la normativa vigente de formación permanente del profesorado de la Consejería de Educación.</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-[var(--border)] bg-[var(--bg)] flex justify-end shrink-0">
+                <button onclick="toggleInfoModal()" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-check"></i> Entendido / Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- COURSE DETAIL MODAL -->
+    <div id="course-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex justify-end transition-opacity duration-250 opacity-0 pointer-events-none">
+        <div id="modal-container" class="w-full max-w-md bg-[var(--surface)] h-full shadow-2xl flex flex-col transform translate-x-full transition-transform duration-300 ease-out border-l border-[var(--border)]">
+            
+            <!-- Modal Header -->
+            <div id="modal-header-bg" class="p-6 text-white relative flex flex-col justify-between min-h-[160px] bg-blue-600 transition-colors duration-300">
+                <button onclick="closeModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/20 hover:bg-black/40 text-white flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                
+                <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider opacity-90" id="modal-line-tag">
+                    <i class="fa-solid fa-subway"></i> Línea
+                </div>
+
+                <div>
+                    <div id="modal-course-code" class="text-xs font-mono font-bold bg-white/20 px-2 py-0.5 rounded w-fit mb-1.5">14000</div>
+                    <h2 id="modal-course-title" class="text-lg md:text-xl font-black tracking-tight leading-snug">
+                        Título de la Actividad
+                    </h2>
+                </div>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-5 text-xs md:text-sm">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)] space-y-1">
+                        <div class="text-[10px] uppercase font-bold text-[var(--muted)]">Fecha Inicio</div>
+                        <div id="modal-start-date" class="font-bold text-[var(--fg)]">00/00/2026</div>
+                    </div>
+                    <div class="p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)] space-y-1">
+                        <div class="text-[10px] uppercase font-bold text-[var(--muted)]">Fecha Fin</div>
+                        <div id="modal-end-date" class="font-bold text-[var(--fg)]">00/00/2026</div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-[var(--bg)] rounded-xl border border-[var(--border)] space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-bold text-[var(--fg)]">Sede / Organiza</span>
+                        <span class="text-blue-600 font-semibold">CPR de Mérida</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs pt-2 border-t border-[var(--border)]">
+                        <span class="font-bold text-[var(--fg)]">Trimestre</span>
+                        <span class="text-[var(--muted)]">1er Trimestre 2026</span>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Estado en tu Planificación</h3>
+                    <p class="text-xs text-[var(--muted)] leading-relaxed">
+                        Añade este curso a tu plan trimestral para calcular tu itinerario formativo y gráficos de progreso.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-[var(--border)] bg-[var(--bg)] space-y-2">
+                <button id="btn-toggle-modal-plan" onclick="togglePlanFromModal()" class="w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all">
+                    <i class="fa-solid fa-plus"></i> Añadir a Mi Plan Formativo
+                </button>
+                
+                <!-- Modal Calendar Integration Buttons -->
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button onclick="addCurrentCourseToGoogleCalendar()" class="py-2 px-2.5 bg-white dark:bg-slate-800 border border-[var(--border)] hover:border-blue-500 text-[var(--fg)] rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                        <i class="fa-brands fa-google text-blue-500"></i> Google Calendar
+                    </button>
+                    <button onclick="downloadCurrentCourseIcs()" class="py-2 px-2.5 bg-white dark:bg-slate-800 border border-[var(--border)] hover:border-slate-500 text-[var(--fg)] rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                        <i class="fa-brands fa-apple text-slate-800 dark:text-slate-200"></i> iOS / Apple / iCal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRINT VIEW FOR PDF EXPORT -->
+    <div id="print-view">
+        <div class="border-b-2 border-slate-800 pb-4 mb-6 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <img src="https://res.cloudinary.com/dilbphzzy/image/upload/v1762517427/logo_cpr_rsnqs9.png" alt="CPR Mérida" class="h-12 w-auto object-contain">
+                <div>
+                    <h1 class="text-2xl font-black text-slate-900">CPR de Mérida · Plan Formativo Personal</h1>
+                    <p class="text-sm font-bold text-slate-600">1er Trimestre 2026 - Informe de Itinerario y Progreso</p>
+                </div>
+            </div>
+            <div class="text-right text-xs text-slate-500">
+                Impreso el: <span id="print-date"></span>
+            </div>
+        </div>
+
+        <div id="print-content" class="space-y-6">
+            <!-- Printed dynamically -->
+        </div>
+
+        <div class="mt-8 pt-4 border-t border-slate-300 text-xs text-slate-500 flex justify-between">
+            <span>Centro de Profesores y Recursos de Mérida</span>
+            <span>Consejería de Educación - Red Formativa</span>
+        </div>
+    </div>
+
+    <!-- Hidden file input for loading JSON plan -->
+    <input type="file" id="import-plan-input" accept=".json" onchange="importPlanFile(event)" class="hidden">
+
+    <script>
+        /* 1. 12 OFFICIAL LINES METRO DATA */
+        const LINES_DATA = {
+            'rojo': { id: 1, key: 'rojo', name: 'Metodologías Activas', color: '#E30613', path: 'M110,180 H450 L530,260 H950 L1030,180 H1290', term: { x: 110, y: 180, side: 'left' } },
+            'azul': { id: 2, key: 'azul', name: 'Tecnologías Educativas', color: '#0072CE', path: 'M160,65 V120 H480 L560,180 H1020 L1080,120 H1290', term: { x: 160, y: 65, side: 'top' } },
+            'dorado': { id: 3, key: 'dorado', name: 'Diversidad e Inclusión', color: '#B8901F', path: 'M110,380 H350 L430,460 H920 L1000,380 H1290', term: { x: 110, y: 380, side: 'left' } },
+            'rosa': { id: 4, key: 'rosa', name: 'Plurilingüismo', color: '#E83E8C', path: 'M1290,260 H980 L900,340 H420 L340,260 H110', term: { x: 1290, y: 260, side: 'right' } },
+            'lila': { id: 5, key: 'lila', name: 'Convivencia y Coeducación', color: '#8A2BE2', path: 'M420,65 V320 L500,400 V830', term: { x: 420, y: 65, side: 'top' } },
+            'verde': { id: 6, key: 'verde', name: 'Innovación Educativa', color: '#00A651', path: 'M1290,480 H950 L870,560 H450 L370,480 H110', term: { x: 1290, y: 480, side: 'right' } },
+            'naranja': { id: 7, key: 'naranja', name: 'Salud Física y Emocional', color: '#F39200', path: 'M820,65 V340 L900,420 V830', term: { x: 820, y: 65, side: 'top' } },
+            'marron': { id: 8, key: 'marron', name: 'Desarrollo Curricular', color: '#A67B5B', path: 'M260,835 V700 L340,620 H880 L960,700 V835', term: { x: 260, y: 835, side: 'bottom' } },
+            'azulclaro': { id: 9, key: 'azulclaro', name: 'Liderazgo Pedagógico', color: '#0EA5E9', path: 'M1020,835 V580 L940,500 V160 L1020,80', term: { x: 1020, y: 835, side: 'bottom' } },
+            'salmon': { id: 10, key: 'salmon', name: 'Bibliotecas', color: '#FA8072', path: 'M110,580 H1290', term: { x: 110, y: 580, side: 'left' } },
+            'amarillo': { id: 11, key: 'amarillo', name: 'Artes', color: '#EAB308', path: 'M620,835 V520 L540,440 V160 L620,80', term: { x: 620, y: 835, side: 'bottom' } },
+            'azuloscuro': { id: 12, key: 'azuloscuro', name: 'Formación Profesional', color: '#0B2545', path: 'M1290,740 H920 L840,680 H480 L400,740 H110', term: { x: 1290, y: 740, side: 'right' } }
+        };
+
+        /* 2. REAL CPR MÉRIDA COURSE CATALOG (1er Trimestre) */
+        const COURSES_DATA = [
+            /* L1 · Metodologías Activas */
+            { code: '14172', name: 'NEUROEDUCACIÓN EN ACCIÓN. SORPRENDER, EMOCIONAR Y CREAR PARA TRANSFORMAR', line: 'rojo', start: '2026-11-10', end: '2026-11-17' },
+            { code: '14180', name: 'PROPUESTAS PARA ACOMPAÑAR EL APRENDIZAJE DE LA LECTOESCRITURA EN EDUCACIÓN INFANTIL', line: 'rojo', start: '2026-10-20', end: '2026-10-27' },
+            { code: '14201', name: 'LA ORALIDAD INTEGRAL EN EL AULA. RITMO, VOZ Y PRESENCIA CONSCIENTE', line: 'rojo', start: '2026-10-05', end: '2026-10-14' },
+
+            /* L2 · Tecnologías Educativas */
+            { code: '14200', name: 'C.E. ARN. BLOQUE 1: FUNDAMENTOS DE LA NUBE. IDENTIDAD, CÓMPUTO Y ALMACENAMIENTO', line: 'azul', start: '2026-09-10', end: '2026-09-25' },
+            { code: '14210', name: 'CREANDO AULAS INCLUSIVAS CON ROBÓTICA', line: 'azul', start: '2026-10-05', end: '2026-10-19' },
+            { code: '14132', name: 'IMPRESIÓN 3D SIN MIEDO: APRENDE, IMPRIME Y TRANSFORMA TU AULA', line: 'azul', start: '2026-10-08', end: '2026-10-22' },
+            { code: '14155', name: 'IA: HERRAMIENTAS INTELIGENTES PARA DOCENTES QUE PIENSAN', line: 'azul', start: '2026-10-20', end: '2026-10-27' },
+            { code: '14137', name: 'DE LA IA AL PENSAMIENTO COMPUTACIONAL EN EL AULA CON MBOT2', line: 'azul', start: '2026-11-03', end: '2026-11-12' },
+            { code: '14138', name: 'ROBÓTICA PARA PRINCIPIANTES: ARDUINO + ESP32', line: 'azul', start: '2026-11-16', end: '2026-11-30' },
+            { code: '14136', name: 'MOVER, CONSTRUIR Y PENSAR COMO UN ROBOT', line: 'azul', start: '2026-11-18', end: '2026-12-02' },
+
+            /* L3 · Diversidad e Inclusión */
+            { code: '14220', name: 'RECURSOS PARA TRABAJAR CON EL ALUMNADO TEA', line: 'dorado', start: '2026-10-27', end: '2026-12-11' },
+            { code: '14222', name: 'DISEÑAR PARA INCLUIR: REDISEÑO DE ESPACIOS EDUCATIVOS', line: 'dorado', start: '2026-11-17', end: '2026-11-26' },
+            { code: '14237', name: 'FORMACIÓN ESPECÍFICA UNIDADES, EQUIPOS ESPECÍFICOS Y PROFESIONALES DEL PROGRAMA', line: 'dorado', start: '2026-10-14', end: '2026-11-10' },
+
+            /* L4 · Plurilingüismo */
+            { code: '14163', name: 'DISEÑA UN TWINSPACE DE CALIDAD', line: 'rosa', start: '2026-10-07', end: '2026-10-21' },
+            { code: '14125', name: 'PROGRAMA JEAN MONNET: OPORTUNIDADES DE FINANCIACIÓN PARA IMPULSAR LA DIMENSIÓN EUROPEA', line: 'rosa', start: '2026-11-01', end: '2027-01-28' },
+            { code: '14127', name: 'INTELIGENCIA ARTIFICIAL APLICADA A LA ENSEÑANZA DEL PORTUGUÉS', line: 'rosa', start: '2026-11-05', end: '2026-11-26' },
+            { code: '14168', name: 'ELABORACIÓN DE PROGRAMACIONES CON IA, CLASSROOM Y NOTEBOOK LM (2ª ED.)', line: 'rosa', start: '2026-11-09', end: '2026-11-23' },
+            { code: '14228', name: 'ESTRATEGIAS DIDÁCTICAS PRÁCTICAS PARA LA ENSEÑANZA DE LAS LENGUAS', line: 'rosa', start: '2026-11-09', end: '2026-11-30' },
+            { code: '14128', name: 'AEEE: CLAVES PARA EL ACCESO A LA ACCIÓN EDUCATIVA ESPAÑOLA EN EL EXTERIOR', line: 'rosa', start: '2026-12-01', end: '2026-12-17' },
+            { code: '14218', name: 'EN ROUTE VERS LE B2: CURSO MONOGRÁFICO. EN MARCHA HACIA EL NIVEL B2 DE FRANCÉS', line: 'rosa', start: '2026-10-05', end: '2026-11-15' },
+
+            /* L5 · Convivencia y Coeducación */
+            { code: '14164', name: 'LAS TABLAS DE MI RECREO', line: 'lila', start: '2026-10-07', end: '2026-10-28' },
+            { code: '14223', name: 'AULAS SEGURAS: PREVENCIÓN Y RESPUESTA ANTE EL ACOSO Y EL CIBERACOSO', line: 'lila', start: '2026-10-28', end: '2026-11-11' },
+            { code: '14221', name: 'CONVIVENCIA RESTAURATIVA Y EDUCACIÓN TRANSFORMADORA', line: 'lila', start: '2026-11-09', end: '2026-11-30' },
+
+            /* L6 · Innovación Educativa */
+            { code: '14202', name: 'DISEÑA, CREA, ENSEÑA: EL PODER DE CANVA EN EL AULA', line: 'verde', start: '2026-11-03', end: '2026-11-12' },
+
+            /* L7 · Salud Física y Emocional */
+            { code: '14160', name: 'VOLVER A TI', line: 'naranja', start: '2026-09-23', end: '2026-10-08' },
+            { code: '14193', name: 'ACTUACIÓN ANTE URGENCIAS SANITARIAS. PRIMEROS AUXILIOS', line: 'naranja', start: '2026-09-23', end: '2026-09-29' },
+            { code: '14190', name: 'SALUD Y BIENESTAR. COORDINACIÓN INSTITUCIONAL', line: 'naranja', start: '2026-10-15', end: '2026-11-16' },
+            { code: '14196', name: 'LA INTELIGENCIA EMOCIONAL Y LAS HABILIDADES DE COMUNICACIÓN EN EL AULA', line: 'naranja', start: '2026-10-21', end: '2026-11-19' },
+            { code: '14120', name: 'CUIDADO EMOCIONAL Y SALUD MENTAL EN LA PRÁCTICA EDUCATIVA', line: 'naranja', start: '2026-11-11', end: '2026-11-25' },
+
+            /* L8 · Desarrollo Curricular */
+            { code: '14162', name: 'ELABORACIÓN DE PROGRAMACIONES CON IA, CLASSROOM Y NOTEBOOKLM', line: 'marron', start: '2026-09-22', end: '2026-10-01' },
+            { code: '14229', name: 'C.E. ARN. BLOQUE 1 (II): FUNDAMENTOS DE LA NUBE. IDENTIDAD CÓMPUTO Y ALMACENAMIENTO', line: 'marron', start: '2026-09-28', end: '2026-10-09' },
+            { code: '14216', name: 'RAYUELA: EVALUACIÓN COMPETENCIAL', line: 'marron', start: '2026-10-14', end: '2026-10-21' },
+            { code: '14194', name: 'CREACIÓN DE MAPAS Y ACTIVIDADES DE ORIENTACIÓN MEDIANTE SOFTWARE LIBRE EN EL ÁMBITO EDUCATIVO', line: 'marron', start: '2026-10-19', end: '2026-10-28' },
+            { code: '14215', name: 'ACTUALIZACIÓN DIDÁCTICA DE LA FILOSOFÍA 26-27', line: 'marron', start: '2026-11-02', end: '2026-11-18' },
+
+            /* L9 · Liderazgo Pedagógico */
+            { code: '14123', name: 'LIDERAZGO DOCENTE PARA LOS CEPAS DE LA PROVINCIA DE BADAJOZ', line: 'azulclaro', start: '2026-09-22', end: '2026-09-22' },
+            { code: '14188', name: 'RAYUELA: EVALUACIÓN COMPETENCIAL', line: 'azulclaro', start: '2026-10-13', end: '2026-10-20' },
+            { code: '14192', name: 'RAYUELA: GESTIÓN DE CENTROS BE-LEARNING ONLINE', line: 'azulclaro', start: '2026-10-20', end: '2026-11-03' },
+            { code: '14166', name: 'COMUNICACIÓN EFICAZ EN LOS CENTROS EDUCATIVOS', line: 'azulclaro', start: '2026-11-01', end: '2026-11-15' },
+            { code: '14191', name: 'RAYUELA: GESTIÓN DE CENTROS BE-LEARNING ONLINE (2ª ED.)', line: 'azulclaro', start: '2026-11-12', end: '2026-11-26' },
+            { code: '14189', name: 'RAYUELA: GESTIÓN ECONÓMICA ONLINE', line: 'azulclaro', start: '2026-12-01', end: '2026-12-18' },
+            { code: '14231', name: 'DECIDIR CON CONFIANZA: CLAVES JURÍDICAS PARA LA INSPECCIÓN Y LOS EQUIPOS DIRECTIVOS', line: 'azulclaro', start: '2026-11-16', end: '2026-12-02' },
+
+            /* L10 · Bibliotecas */
+            { code: '14126', name: 'LA BIBLIOTECA ESCOLAR COMO TERCER ESPACIO: CLAVES PARA SU DINAMIZACIÓN EDUCATIVA', line: 'salmon', start: '2026-10-29', end: '2026-12-02' },
+
+            /* L11 · Artes */
+            { code: '14159', name: '¿JUGAMOS A TOCAR? ESTRATEGIAS PARA ACERCAR EL REPERTORIO CONTEMPORÁNEO AL AULA', line: 'amarillo', start: '2026-09-26', end: '2026-09-26' },
+            { code: '14165', name: 'MANOS A LA OBRA: CREATIVIDAD TEXTIL PARA LAS NAVIDADES', line: 'amarillo', start: '2026-10-15', end: '2026-10-30' },
+
+            /* L12 · Formación Profesional */
+            { code: '14144', name: 'PROGRAMACIÓN, RESULTADOS DE APRENDIZAJE Y CRITERIOS DE EVALUACIÓN EN FP DUAL', line: 'azuloscuro', start: '2026-09-15', end: '2026-09-29' },
+            { code: '14145', name: 'METODOLOGÍAS ACTIVAS PARA LA FP', line: 'azuloscuro', start: '2026-10-06', end: '2026-10-22' },
+            { code: '14147', name: 'SOFT SKILLS PARA LA FP', line: 'azuloscuro', start: '2026-10-27', end: '2026-11-05' },
+            { code: '14153', name: 'AULAS ATECA', line: 'azuloscuro', start: '2026-11-10', end: '2026-12-03' },
+            { code: '14156', name: 'ATENCIÓN A LA DIVERSIDAD DEL ALUMNADO EN ENSEÑANZAS DE RÉGIMEN ESPECIAL', line: 'azuloscuro', start: '2026-11-19', end: '2026-12-03' }
+        ];
+
+        /* 3. APPLICATION STATE */
+        let state = {
+            activeMode: 'map',
+            visibleLines: {
+                rojo: true, azul: true, dorado: true, rosa: true, lila: true, verde: true,
+                naranja: true, marron: true, azulclaro: true, salmon: true, amarillo: true, azuloscuro: true
+            },
+            expandedLines: new Set(),
+            plannedCourses: JSON.parse(localStorage.getItem('cpr_merida_plan_2026') || '{}'),
+            activeModalCourseCode: null,
+            isInfoModalOpen: false,
+            searchQuery: '',
+            zoomLevel: 1,
+            panX: 0,
+            panY: 0,
+            isDragging: false,
+            dragStartX: 0,
+            dragStartY: 0,
+            trainsEnabled: true,
+            theme: localStorage.getItem('cpr_theme') || 'light'
+        };
+
+        /* 4. PATH MEASUREMENT & CHRONOLOGICAL COMPUTATION */
+        let measureSvgContainer = null;
+        const linePathCache = {};
+
+        function getPointOnSvgPath(pathD, ratio, lineKey) {
+            if (!measureSvgContainer) {
+                measureSvgContainer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                measureSvgContainer.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden;pointer-events:none;';
+                document.body.appendChild(measureSvgContainer);
+            }
+            
+            let cached = linePathCache[lineKey];
+            if (!cached || cached.pathD !== pathD) {
+                const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathEl.setAttribute('d', pathD);
+                measureSvgContainer.appendChild(pathEl);
+                cached = {
+                    pathEl: pathEl,
+                    totalLen: pathEl.getTotalLength(),
+                    pathD: pathD
+                };
+                linePathCache[lineKey] = cached;
+            }
+
+            const clampedRatio = Math.max(0.08, Math.min(0.92, ratio));
+            const pt = cached.pathEl.getPointAtLength(cached.totalLen * clampedRatio);
+            return { x: pt.x, y: pt.y };
+        }
+
+        function computeCoursePositions() {
+            const coursesByLine = {};
+            Object.keys(LINES_DATA).forEach(k => coursesByLine[k] = []);
+            
+            COURSES_DATA.forEach(c => {
+                if (coursesByLine[c.line]) coursesByLine[c.line].push(c);
+            });
+
+            // 1. Initial uniform chronological distribution along each line
+            Object.entries(coursesByLine).forEach(([lineKey, lineCourses]) => {
+                lineCourses.sort((a, b) => a.start.localeCompare(b.start) || a.code.localeCompare(b.code));
+                
+                const count = lineCourses.length;
+                const minR = 0.14;
+                const maxR = 0.86;
+
+                lineCourses.forEach((course, idx) => {
+                    let r;
+                    if (count === 1) {
+                        r = 0.5;
+                    } else {
+                        r = minR + (idx / (count - 1)) * (maxR - minR);
+                    }
+                    course._ratio = r;
+                    course._pos = getPointOnSvgPath(LINES_DATA[lineKey].path, r, lineKey);
+                });
+            });
+
+            // 2. Iterative anti-collision relaxation pass
+            const MIN_DIST = 40; // Minimum pixel spacing between any two station nodes
+            const PASSES = 20;
+
+            for (let pass = 0; pass < PASSES; pass++) {
+                let moved = false;
+                for (let i = 0; i < COURSES_DATA.length; i++) {
+                    for (let j = i + 1; j < COURSES_DATA.length; j++) {
+                        const c1 = COURSES_DATA[i];
+                        const c2 = COURSES_DATA[j];
+                        if (!c1._pos || !c2._pos) continue;
+
+                        const dx = c2._pos.x - c1._pos.x;
+                        const dy = c2._pos.y - c1._pos.y;
+                        const dist = Math.hypot(dx, dy);
+
+                        if (dist < MIN_DIST && dist > 0) {
+                            moved = true;
+                            const shift = (MIN_DIST - dist) / MIN_DIST * 0.025;
+
+                            if (c1.line === c2.line) {
+                                c1._ratio = Math.max(0.08, c1._ratio - shift);
+                                c2._ratio = Math.min(0.92, c2._ratio + shift);
+                            } else {
+                                c1._ratio = Math.max(0.08, Math.min(0.92, c1._ratio - shift));
+                                c2._ratio = Math.max(0.08, Math.min(0.92, c2._ratio + shift));
+                            }
+
+                            c1._pos = getPointOnSvgPath(LINES_DATA[c1.line].path, c1._ratio, c1.line);
+                            c2._pos = getPointOnSvgPath(LINES_DATA[c2.line].path, c2._ratio, c2.line);
+                        }
+                    }
+                }
+                if (!moved) break;
+            }
+        }
+
+        /* 5. MAP RENDERING */
+        function renderMetroMap() {
+            const shadowsLayer = document.getElementById('layer-line-shadows');
+            const linesLayer = document.getElementById('layer-lines');
+            const trainsLayer = document.getElementById('layer-trains');
+            const stationsLayer = document.getElementById('layer-stations');
+            const terminalsLayer = document.getElementById('layer-terminals');
+
+            shadowsLayer.innerHTML = '';
+            linesLayer.innerHTML = '';
+            trainsLayer.innerHTML = '';
+            stationsLayer.innerHTML = '';
+            terminalsLayer.innerHTML = '';
+
+            // 1. Draw Line Paths
+            Object.values(LINES_DATA).forEach(line => {
+                const isVisible = state.visibleLines[line.key];
+
+                const shadow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                shadow.setAttribute('d', line.path);
+                shadow.setAttribute('class', 'line-path shadow');
+                shadowsLayer.appendChild(shadow);
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', line.path);
+                path.setAttribute('stroke', line.color);
+                path.setAttribute('stroke-width', '9');
+                path.setAttribute('class', `line-path ${isVisible ? '' : 'dim'}`);
+                linesLayer.appendChild(path);
+
+                // Animated Metro Markers (CPR Mérida Logo Horizontal Train Head)
+                if (isVisible && state.trainsEnabled) {
+                    const trainGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+                    const trainLogo = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                    trainLogo.setAttribute('href', 'https://res.cloudinary.com/dilbphzzy/image/upload/v1762517427/logo_cpr_rsnqs9.png');
+                    trainLogo.setAttribute('width', '116');
+                    trainLogo.setAttribute('height', '44');
+                    trainLogo.setAttribute('x', '-58');
+                    trainLogo.setAttribute('y', '-22');
+                    trainLogo.setAttribute('transform', 'rotate(90)');
+                    trainLogo.setAttribute('filter', 'url(#node-shadow)');
+
+                    const anim = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
+                    anim.setAttribute('path', line.path);
+                    anim.setAttribute('dur', `${18 + (line.id % 5) * 3}s`);
+                    anim.setAttribute('repeatCount', 'indefinite');
+                    anim.setAttribute('rotate', 'auto');
+
+                    trainGroup.appendChild(trainLogo);
+                    trainGroup.appendChild(anim);
+                    trainsLayer.appendChild(trainGroup);
+                }
+            });
+
+            // 2. Draw Stations / Formaciones
+            COURSES_DATA.forEach(course => {
+                const line = LINES_DATA[course.line];
+                if (!line || !state.visibleLines[course.line] || !course._pos) return;
+
+                const isPlanned = !!state.plannedCourses[course.code];
+                const isModalActive = state.activeModalCourseCode === course.code;
+
+                const stationGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                stationGroup.setAttribute('class', 'station-group');
+
+                if (isPlanned || isModalActive) {
+                    const pulseRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    pulseRing.setAttribute('cx', course._pos.x);
+                    pulseRing.setAttribute('cy', course._pos.y);
+                    pulseRing.setAttribute('r', isModalActive ? '15' : '12');
+                    pulseRing.setAttribute('fill', 'none');
+                    pulseRing.setAttribute('stroke', line.color);
+                    pulseRing.setAttribute('stroke-width', '2.5');
+                    pulseRing.setAttribute('class', 'pulse-ring');
+                    stationGroup.appendChild(pulseRing);
+                }
+
+                const hitTarget = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                hitTarget.setAttribute('cx', course._pos.x);
+                hitTarget.setAttribute('cy', course._pos.y);
+                hitTarget.setAttribute('r', '18');
+                hitTarget.setAttribute('fill', 'transparent');
+                hitTarget.setAttribute('cursor', 'pointer');
+                stationGroup.appendChild(hitTarget);
+
+                const nodeVisual = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                nodeVisual.setAttribute('cx', course._pos.x);
+                nodeVisual.setAttribute('cy', course._pos.y);
+                nodeVisual.setAttribute('r', isPlanned ? '8.5' : '7');
+                nodeVisual.setAttribute('fill', isPlanned ? line.color : '#ffffff');
+                nodeVisual.setAttribute('stroke', line.color);
+                nodeVisual.setAttribute('stroke-width', isPlanned ? '2.5' : '3.5');
+                nodeVisual.setAttribute('class', 'station-node-visual');
+                nodeVisual.setAttribute('filter', 'url(#node-shadow)');
+                stationGroup.appendChild(nodeVisual);
+
+                if (isPlanned) {
+                    const innerDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    innerDot.setAttribute('cx', course._pos.x);
+                    innerDot.setAttribute('cy', course._pos.y);
+                    innerDot.setAttribute('r', '2.5');
+                    innerDot.setAttribute('fill', '#ffffff');
+                    stationGroup.appendChild(innerDot);
+                }
+
+                stationGroup.addEventListener('mouseenter', (e) => showTooltip(e, course));
+                stationGroup.addEventListener('mousemove', (e) => moveTooltip(e));
+                stationGroup.addEventListener('mouseleave', hideTooltip);
+                stationGroup.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openCourseModal(course);
+                });
+
+                stationsLayer.appendChild(stationGroup);
+            });
+
+            // 3. Draw Perimeter Terminal Indicators
+            Object.values(LINES_DATA).forEach(line => {
+                const { x, y, side } = line.term;
+                const isVisible = state.visibleLines[line.key];
+
+                let px = x, py = y;
+                if (side === 'left') px = x - 26;
+                if (side === 'right') px = x + 26;
+                if (side === 'top') py = y - 20;
+                if (side === 'bottom') py = y + 20;
+
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                group.setAttribute('class', 'cursor-pointer transition-opacity duration-300');
+                group.setAttribute('opacity', isVisible ? '1' : '0.25');
+                group.onclick = () => toggleLine(line.key);
+
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', px - 18);
+                rect.setAttribute('y', py - 11);
+                rect.setAttribute('width', '36');
+                rect.setAttribute('height', '22');
+                rect.setAttribute('rx', '11');
+                rect.setAttribute('fill', line.color);
+                rect.setAttribute('stroke', '#000000');
+                rect.setAttribute('stroke-width', '1.5');
+                group.appendChild(rect);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', px);
+                text.setAttribute('y', py + 4.5);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('font-family', 'Inter, sans-serif');
+                text.setAttribute('font-size', '11');
+                text.setAttribute('font-weight', '900');
+                text.setAttribute('fill', '#ffffff');
+                text.textContent = line.id;
+                group.appendChild(text);
+
+                terminalsLayer.appendChild(group);
+            });
+        }
+
+        /* 6. TOOLTIP LOGIC */
+        const tooltipEl = document.getElementById('station-tooltip');
+
+        function showTooltip(e, course) {
+            const line = LINES_DATA[course.line];
+            document.getElementById('tooltip-code').textContent = `#${course.code}`;
+            document.getElementById('tooltip-title').textContent = course.name;
+            document.getElementById('tooltip-line').textContent = `Línea ${line.id} · ${line.name}`;
+
+            tooltipEl.classList.remove('opacity-0');
+            moveTooltip(e);
+        }
+
+        function moveTooltip(e) {
+            tooltipEl.style.left = `${e.clientX}px`;
+            tooltipEl.style.top = `${e.clientY}px`;
+        }
+
+        function hideTooltip() {
+            tooltipEl.classList.add('opacity-0');
+        }
+
+        /* 7. SIDEBAR PANELS */
+        function renderSidebar() {
+            const container = document.getElementById('sidebar-dynamic-content');
+            
+            if (state.searchQuery.trim().length > 0) {
+                renderSearchResults(container);
+                return;
+            }
+
+            if (state.activeMode === 'map') {
+                renderMapSidebar(container);
+            } else if (state.activeMode === 'plan') {
+                renderPlanAndProgressSidebar(container);
+            }
+
+            updatePlanBadgeCount();
+        }
+
+        function renderMapSidebar(container) {
+            const total = COURSES_DATA.length;
+            
+            let html = `
+                <div class="flex justify-between items-center text-xs font-bold uppercase tracking-wider text-[var(--muted)] mb-2">
+                    <span>12 Líneas Oficiales</span>
+                    <span class="text-[11px] font-semibold text-blue-600">${total} Cursos</span>
+                </div>
+                <div class="space-y-1.5">
+            `;
+
+            Object.values(LINES_DATA).forEach(line => {
+                const lineCourses = COURSES_DATA.filter(c => c.line === line.key).sort((a,b) => a.start.localeCompare(b.start));
+                const count = lineCourses.length;
+                const isVisible = state.visibleLines[line.key];
+                const isExpanded = state.expandedLines.has(line.key);
+
+                html += `
+                    <div class="border border-[var(--border)] rounded-2xl overflow-hidden transition-all bg-[var(--surface)] ${isVisible ? '' : 'opacity-50'}">
+                        <div onclick="toggleSidebarLineAccordion('${line.key}')" class="p-3 flex items-center justify-between gap-2.5 cursor-pointer hover:bg-[var(--bg)] transition-colors">
+                            <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                                <span class="w-3.5 h-3.5 rounded-full shrink-0 border border-black/80" style="background-color: ${line.color}"></span>
+                                <span class="text-xs font-extrabold text-[var(--fg)] truncate">L${line.id} · ${line.name}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--bg)] text-[var(--muted)]">${count}</span>
+                                <button onclick="event.stopPropagation(); toggleLine('${line.key}')" class="text-xs text-[var(--muted)] hover:text-blue-600 p-1" title="Ocultar/Mostrar línea">
+                                    <i class="fa-solid ${isVisible ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                                </button>
+                                <i class="fa-solid fa-chevron-right text-[10px] text-[var(--muted)] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}"></i>
+                            </div>
+                        </div>
+
+                        ${isExpanded ? `
+                            <div class="px-3 pb-3 pt-1 border-t border-[var(--border)] space-y-1.5 bg-[var(--bg)]/40">
+                                ${lineCourses.length > 0 ? lineCourses.map(course => {
+                                    const isPlanned = !!state.plannedCourses[course.code];
+                                    return `
+                                        <div onclick="openCourseModalByCode('${course.code}')" class="p-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:border-blue-500 cursor-pointer transition-all flex items-start gap-2.5">
+                                            <input type="checkbox" ${isPlanned ? 'checked' : ''} onclick="event.stopPropagation(); togglePlanCourse('${course.code}')" class="mt-0.5 rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-[11px] font-bold leading-snug text-[var(--fg)] line-clamp-2">${course.name}</div>
+                                                <div class="flex justify-between items-center text-[10px] text-[var(--muted)] mt-1 font-mono">
+                                                    <span>#${course.code}</span>
+                                                    <span>${formatDateShort(course.start)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('') : `<div class="text-[11px] text-[var(--muted)] italic py-1 px-1">Sin cursos programados en esta línea</div>`}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function getScheduleConflicts(plannedList) {
+            const conflictMap = {};
+            for (let i = 0; i < plannedList.length; i++) {
+                for (let j = i + 1; j < plannedList.length; j++) {
+                    const a = plannedList[i];
+                    const b = plannedList[j];
+                    if (a.start <= b.end && b.start <= a.end) {
+                        if (!conflictMap[a.code]) conflictMap[a.code] = [];
+                        if (!conflictMap[b.code]) conflictMap[b.code] = [];
+                        conflictMap[a.code].push(b);
+                        conflictMap[b.code].push(a);
+                    }
+                }
+            }
+            return conflictMap;
+        }
+
+        /* UNIFIED "MI PLAN Y PROGRESO" SIDEBAR */
+        function renderPlanAndProgressSidebar(container) {
+            const total = COURSES_DATA.length;
+            const plannedCodes = Object.keys(state.plannedCourses);
+            const plannedList = COURSES_DATA.filter(c => plannedCodes.includes(c.code));
+            const count = plannedList.length;
+            const pct = Math.round((count / total) * 100);
+
+            if (count === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 space-y-3">
+                        <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center mx-auto text-xl">
+                            <i class="fa-solid fa-clipboard-check"></i>
+                        </div>
+                        <h3 class="text-xs font-bold text-[var(--fg)]">Tu Plan está Vacío</h3>
+                        <p class="text-[11px] text-[var(--muted)] max-w-xs mx-auto">
+                            Haz clic en las estaciones del mapa o en la lista de líneas para añadir actividades a tu itinerario y calcular tu progreso.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            const lineCounts = {};
+            plannedList.forEach(c => lineCounts[c.line] = (lineCounts[c.line] || 0) + 1);
+            const activeLineKeys = Object.keys(lineCounts);
+            const numLines = activeLineKeys.length;
+
+            let topLineKey = null;
+            let maxCount = 0;
+            Object.entries(lineCounts).forEach(([k, v]) => {
+                if (v > maxCount) { maxCount = v; topLineKey = k; }
+            });
+            const topLine = topLineKey ? LINES_DATA[topLineKey] : null;
+
+            const conflictMap = getScheduleConflicts(plannedList);
+            const hasConflicts = Object.keys(conflictMap).length > 0;
+
+            // Pedagogical Specialization Analysis
+            let adviceStyle = "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800";
+            let adviceTitleColor = "text-emerald-700 dark:text-emerald-300";
+            let adviceTextColor = "text-emerald-800 dark:text-emerald-200";
+            let adviceIcon = "fa-solid fa-circle-check";
+            let adviceTitle = "Itinerario Especializado";
+            let adviceBody = "";
+
+            if (numLines >= 4 && count <= 5) {
+                adviceStyle = "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800";
+                adviceTitleColor = "text-amber-800 dark:text-amber-300";
+                adviceTextColor = "text-amber-900 dark:text-amber-200";
+                adviceIcon = "fa-solid fa-lightbulb";
+                adviceTitle = "Recomendación: Concentrar el Itinerario";
+                adviceBody = `Has elegido actividades en <strong>${numLines} líneas distintas</strong>. Pedagógicamente se recomienda concentrar tu formación en <strong>2 o 3 líneas estratégicas</strong> para profundizar con verdadero impacto (<em>"Es mejor ser especialista en 2-3 áreas que aprendiz de todo"</em>).`;
+            } else if (numLines >= 2 && numLines <= 3) {
+                adviceStyle = "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800";
+                adviceTitleColor = "text-emerald-800 dark:text-emerald-300";
+                adviceTextColor = "text-emerald-900 dark:text-emerald-200";
+                adviceIcon = "fa-solid fa-award";
+                adviceTitle = "¡Excelente Estrategia de Formación!";
+                adviceBody = `Estás concentrando tu desarrollo profesional en <strong>${numLines} líneas prioritarias</strong> (${activeLineKeys.map(k => 'L' + LINES_DATA[k].id).join(', ')}). Este enfoque en 2-3 líneas te garantiza profundización real en el aula.`;
+            } else if (numLines === 1) {
+                adviceStyle = "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800";
+                adviceTitleColor = "text-blue-800 dark:text-blue-300";
+                adviceTextColor = "text-blue-900 dark:text-blue-200";
+                adviceIcon = "fa-solid fa-bullseye";
+                adviceTitle = "Especialización Intensiva";
+                adviceBody = `Te estás formando exclusivamente en la <strong>Línea ${LINES_DATA[activeLineKeys[0]].id}: ${LINES_DATA[activeLineKeys[0]].name}</strong>.`;
+            } else {
+                adviceStyle = "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800";
+                adviceTitleColor = "text-indigo-800 dark:text-indigo-300";
+                adviceTextColor = "text-indigo-900 dark:text-indigo-200";
+                adviceIcon = "fa-solid fa-layer-group";
+                adviceTitle = "Itinerario Amplio";
+                adviceBody = `Tienes <strong>${count} actividades</strong> seleccionadas en ${numLines} líneas. Valora tu disponibilidad horaria.`;
+            }
+
+            let html = `
+                <!-- Action Buttons bar for Print, PDF, Export & Clear -->
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="printPlanToPDF()" class="py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all">
+                            <i class="fa-solid fa-print"></i> Guardar PDF / Imprimir
+                        </button>
+                        <button onclick="exportPlanJSON()" class="py-2.5 px-3 bg-[var(--surface)] hover:bg-[var(--bg)] border border-[var(--border)] text-[var(--fg)] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all">
+                            <i class="fa-solid fa-download"></i> Guardar (.json)
+                        </button>
+                    </div>
+
+                    <!-- Calendar Sync Action Box -->
+                    <div class="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-2xl border border-blue-200/60 dark:border-blue-800/50 space-y-2">
+                        <div class="text-xs font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                            <i class="fa-solid fa-calendar-plus text-blue-600 dark:text-blue-400"></i> Agendar todo Mi Plan en Calendario
+                        </div>
+                        <p class="text-[10.5px] text-slate-600 dark:text-slate-300 leading-snug">
+                            Guarda automáticamente los días de formación en la agenda de tu móvil o PC:
+                        </p>
+                        <div class="grid grid-cols-2 gap-2 pt-0.5">
+                            <button onclick="downloadPlanIcs()" class="py-2 px-2.5 bg-white dark:bg-slate-800 border border-blue-200 dark:border-slate-700 hover:border-blue-500 text-[var(--fg)] rounded-xl text-[10.5px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                                <i class="fa-brands fa-apple text-slate-800 dark:text-slate-200"></i> Calendario iOS / iCal
+                            </button>
+                            <button onclick="addPlanToGoogleCalendarPrompt()" class="py-2 px-2.5 bg-white dark:bg-slate-800 border border-blue-200 dark:border-slate-700 hover:border-blue-500 text-[var(--fg)] rounded-xl text-[10.5px] font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                                <i class="fa-brands fa-google text-blue-500"></i> Google Calendar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center text-[10px] px-1">
+                        <button onclick="triggerImportJSON()" class="text-blue-600 font-bold hover:underline">
+                            <i class="fa-solid fa-upload mr-1"></i> Cargar Plan Guardado
+                        </button>
+                        <button onclick="clearPlan()" class="text-rose-500 font-bold hover:underline">
+                            <i class="fa-solid fa-trash-can mr-1"></i> Reiniciar Plan
+                        </button>
+                    </div>
+
+                    <!-- PROGRESS DASHBOARD GRAPHIC -->
+                    <div class="p-4 bg-[var(--surface)] rounded-2xl border border-[var(--border)] space-y-3 shadow-sm">
+                        <div class="flex justify-between items-center text-xs font-bold">
+                            <span class="text-[var(--fg)]"><i class="fa-solid fa-chart-pie mr-1 text-blue-600"></i> Mi Progreso Trimestral</span>
+                            <span class="text-blue-600 font-black text-sm">${pct}%</span>
+                        </div>
+                        <div class="w-full h-3 bg-[var(--bg)] rounded-full overflow-hidden p-0.5 border border-[var(--border)]">
+                            <div class="h-full bg-gradient-to-r from-blue-500 via-emerald-500 to-amber-500 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-[var(--muted)] font-medium">
+                            <span><strong>${count}</strong> de <strong>${total}</strong> cursos totales</span>
+                            <span><strong>${numLines}</strong> de <strong>12</strong> líneas activadas</span>
+                        </div>
+
+                        ${topLine ? `
+                            <div class="pt-2.5 border-t border-[var(--border)] flex items-center justify-between text-xs">
+                                <span class="text-[var(--muted)] font-medium">Especialización Principal:</span>
+                                <span class="font-extrabold flex items-center gap-1.5" style="color: ${topLine.color}">
+                                    <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${topLine.color}"></span>
+                                    L${topLine.id} · ${topLine.name}
+                                </span>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- PROGRESS BREAKDOWN BY LINES -->
+                    <div class="p-3 bg-[var(--surface)] rounded-2xl border border-[var(--border)] space-y-2 shadow-sm">
+                        <div class="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">Distribución por Líneas Formativas</div>
+                        <div class="space-y-1.5 pt-1">
+                            ${activeLineKeys.map(k => {
+                                const l = LINES_DATA[k];
+                                const lineTotal = COURSES_DATA.filter(c => c.line === k).length;
+                                const lineCount = lineCounts[k];
+                                const linePct = Math.round((lineCount / lineTotal) * 100);
+                                return `
+                                    <div class="space-y-0.5">
+                                        <div class="flex justify-between text-[11px] font-bold">
+                                            <span class="flex items-center gap-1.5 text-[var(--fg)]">
+                                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${l.color}"></span>
+                                                L${l.id} · ${l.name}
+                                            </span>
+                                            <span class="text-[var(--muted)]">${lineCount}/${lineTotal} (${linePct}%)</span>
+                                        </div>
+                                        <div class="w-full h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
+                                            <div class="h-full rounded-full" style="width: ${linePct}%; background-color: ${l.color}"></div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- PEDAGOGICAL RECOMMENDATION -->
+                    <div class="p-3.5 ${adviceStyle} rounded-2xl border space-y-1">
+                        <div class="text-xs font-bold flex items-center gap-1.5 ${adviceTitleColor}">
+                            <i class="${adviceIcon}"></i>
+                            <span>${adviceTitle}</span>
+                        </div>
+                        <p class="text-[11px] leading-relaxed ${adviceTextColor}">
+                            ${adviceBody}
+                        </p>
+                    </div>
+
+                    ${hasConflicts ? `
+                        <div class="p-3 bg-rose-50 dark:bg-rose-950/40 rounded-2xl border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 space-y-1">
+                            <div class="text-xs font-bold flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span>Coincidencia de Fechas Detectada</span>
+                            </div>
+                            <p class="text-[10.5px] leading-relaxed opacity-90">
+                                Se han detectado actividades en tu plan que coinciden en el tiempo.
+                            </p>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div class="text-xs font-bold uppercase tracking-wider text-[var(--muted)] pt-2">
+                    Listado de Formaciones en tu Plan (${count})
+                </div>
+
+                <div class="space-y-2">
+            `;
+
+            plannedList.sort((a,b) => a.start.localeCompare(b.start)).forEach(course => {
+                const line = LINES_DATA[course.line];
+                const conflicts = conflictMap[course.code];
+                const hasCourseConflict = conflicts && conflicts.length > 0;
+
+                html += `
+                    <div onclick="openCourseModalByCode('${course.code}')" class="p-3 bg-[var(--surface)] rounded-2xl border ${hasCourseConflict ? 'border-rose-400 dark:border-rose-700' : 'border-[var(--border)]'} hover:border-blue-500 cursor-pointer space-y-2 transition-all shadow-sm">
+                        <div class="flex items-center justify-between text-[10px] font-bold">
+                            <span class="flex items-center gap-1.5" style="color: ${line.color}">
+                                <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${line.color}"></span>
+                                L${line.id} · ${line.name}
+                            </span>
+                            <span class="font-mono text-[var(--muted)]">#${course.code}</span>
+                        </div>
+
+                        <div class="text-xs font-bold text-[var(--fg)] leading-snug">${course.name}</div>
+
+                        ${hasCourseConflict ? `
+                            <div class="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 text-[10px] font-medium flex items-start gap-1.5">
+                                <i class="fa-solid fa-circle-exclamation mt-0.5 shrink-0"></i>
+                                <span>Solapa en fechas con: <strong>${conflicts.map(c => '#' + c.code).join(', ')}</strong></span>
+                            </div>
+                        ` : ''}
+
+                        <div class="flex items-center justify-between text-[10px] text-[var(--muted)] pt-1.5 border-t border-[var(--border)] font-medium">
+                            <span><i class="fa-solid fa-calendar-days mr-1"></i>${formatDateShort(course.start)} - ${formatDateShort(course.end)}</span>
+                            <div class="flex items-center gap-2">
+                                <button onclick="event.stopPropagation(); addCourseToGoogleCalendarByCode('${course.code}')" title="Agendar en Google Calendar" class="text-blue-600 hover:text-blue-800 font-bold">
+                                    <i class="fa-brands fa-google"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); downloadCourseIcsByCode('${course.code}')" title="Descargar para iOS / iCal" class="text-slate-700 dark:text-slate-300 hover:text-black font-bold">
+                                    <i class="fa-brands fa-apple"></i>
+                                </button>
+                                <span class="text-slate-300">|</span>
+                                <button onclick="event.stopPropagation(); togglePlanCourse('${course.code}')" class="text-rose-500 hover:text-rose-700 font-bold flex items-center gap-1">
+                                    <i class="fa-solid fa-trash-can text-[9px]"></i> Quitar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderSearchResults(container) {
+            const q = state.searchQuery.toLowerCase();
+            const matches = COURSES_DATA.filter(c => 
+                c.name.toLowerCase().includes(q) || 
+                c.code.includes(q) ||
+                LINES_DATA[c.line].name.toLowerCase().includes(q)
+            );
+
+            let html = `
+                <div class="text-xs font-bold uppercase tracking-wider text-[var(--muted)] mb-2">
+                    Resultados de Búsqueda (${matches.length})
+                </div>
+                <div class="space-y-2">
+            `;
+
+            if (matches.length === 0) {
+                html += `<div class="text-xs text-[var(--muted)] py-4 text-center">No se encontraron actividades formativas.</div>`;
+            } else {
+                matches.forEach(course => {
+                    const line = LINES_DATA[course.line];
+                    const isPlanned = !!state.plannedCourses[course.code];
+                    html += `
+                        <div onclick="openCourseModalByCode('${course.code}')" class="p-3 bg-[var(--surface)] rounded-xl border border-[var(--border)] hover:border-blue-500 cursor-pointer space-y-1.5 transition-all">
+                            <div class="flex justify-between items-center text-[10px] font-bold">
+                                <span style="color: ${line.color}">L${line.id} · ${line.name}</span>
+                                <span class="font-mono text-[var(--muted)]">#${course.code}</span>
+                            </div>
+                            <div class="text-xs font-bold text-[var(--fg)] leading-snug">${course.name}</div>
+                            <div class="flex justify-between items-center text-[10px] text-[var(--muted)] pt-1 border-t border-[var(--border)]">
+                                <span>Inicio: ${formatDateShort(course.start)}</span>
+                                <span class="font-bold ${isPlanned ? 'text-blue-600' : 'text-[var(--muted)]'}">${isPlanned ? '✓ En tu plan' : '＋ Disponible'}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        /* 8. PDF PRINTING & LOCAL SAVE/LOAD LOGIC */
+        function printPlanToPDF() {
+            const totalCourses = COURSES_DATA.length;
+            const plannedCodes = Object.keys(state.plannedCourses);
+            const plannedList = COURSES_DATA.filter(c => plannedCodes.includes(c.code));
+
+            if (plannedList.length === 0) {
+                alert("Añade al menos un curso a tu plan antes de imprimir o guardar en PDF.");
+                return;
+            }
+
+            document.getElementById('print-date').textContent = new Date().toLocaleDateString('es-ES');
+            const printContent = document.getElementById('print-content');
+
+            const lineCounts = {};
+            plannedList.forEach(c => lineCounts[c.line] = (lineCounts[c.line] || 0) + 1);
+            const activeLineKeys = Object.keys(lineCounts);
+            const pct = Math.round((plannedList.length / totalCourses) * 100);
+
+            let topLineKey = null;
+            let maxCount = 0;
+            Object.entries(lineCounts).forEach(([k, v]) => {
+                if (v > maxCount) { maxCount = v; topLineKey = k; }
+            });
+            const topLine = topLineKey ? LINES_DATA[topLineKey] : null;
+
+            let html = `
+                <!-- Progress & Specialization Summary Box in Print PDF -->
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+                    <div style="font-weight: 800; font-size: 15px; color: #0f172a; margin-bottom: 8px; border-b: 1px solid #e2e8f0; pb: 6px;">
+                        Resumen de Progreso y Especialización Formativa
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 12px; margin-bottom: 12px;">
+                        <div>
+                            <span style="color: #64748b; font-size: 10px; font-weight: bold; text-transform: uppercase;">Actividades Seleccionadas:</span>
+                            <div style="font-weight: 800; font-size: 16px; color: #0072CE;">${plannedList.length} Cursos</div>
+                        </div>
+                        <div>
+                            <span style="color: #64748b; font-size: 10px; font-weight: bold; text-transform: uppercase;">Cobertura del Plan:</span>
+                            <div style="font-weight: 800; font-size: 16px; color: #10b981;">${pct}% del Catálogo</div>
+                        </div>
+                        <div>
+                            <span style="color: #64748b; font-size: 10px; font-weight: bold; text-transform: uppercase;">Especialización Principal:</span>
+                            <div style="font-weight: 800; font-size: 13px; color: ${topLine ? topLine.color : '#0f172a'};">
+                                ${topLine ? 'L' + topLine.id + ': ' + topLine.name : 'Varios'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="font-[10px]; font-weight: bold; color: #475569; margin-bottom: 6px;">DESGLOSE POR LÍNEAS FORMATIVAS:</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${activeLineKeys.map(k => {
+                            const l = LINES_DATA[k];
+                            return `<span style="background: ${l.color}; color: white; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: bold;">
+                                L${l.id}: ${lineCounts[k]} ${lineCounts[k] === 1 ? 'curso' : 'cursos'}
+                            </span>`;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <div style="font-weight: 800; font-size: 14px; margin-bottom: 10px; color: #0f172a;">Detalle de Actividades en el Itinerario Personal</div>
+
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #e2e8f0; text-align: left; color: #334155;">
+                            <th style="padding: 8px; border: 1px solid #cbd5e1;">Código</th>
+                            <th style="padding: 8px; border: 1px solid #cbd5e1;">Línea Formativa</th>
+                            <th style="padding: 8px; border: 1px solid #cbd5e1;">Nombre de la Actividad</th>
+                            <th style="padding: 8px; border: 1px solid #cbd5e1;">Fecha Inicio</th>
+                            <th style="padding: 8px; border: 1px solid #cbd5e1;">Fecha Fin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            plannedList.sort((a,b) => a.start.localeCompare(b.start)).forEach(c => {
+                const line = LINES_DATA[c.line];
+                html += `
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: bold;">#${c.code}</td>
+                        <td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold; color: ${line.color};">L${line.id} · ${line.name}</td>
+                        <td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">${c.name}</td>
+                        <td style="padding: 8px; border: 1px solid #cbd5e1;">${formatDateShort(c.start)}</td>
+                        <td style="padding: 8px; border: 1px solid #cbd5e1;">${formatDateShort(c.end)}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            printContent.innerHTML = html;
+
+            window.print();
+        }
+
+        function exportPlanJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.plannedCourses, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "mi_plan_cpr_merida_2026.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function triggerImportJSON() {
+            document.getElementById('import-plan-input').click();
+        }
+
+        function importPlanFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedPlan = JSON.parse(e.target.result);
+                    if (typeof importedPlan === 'object') {
+                        state.plannedCourses = importedPlan;
+                        localStorage.setItem('cpr_merida_plan_2026', JSON.stringify(state.plannedCourses));
+                        renderMetroMap();
+                        renderSidebar();
+                    }
+                } catch(err) {
+                    alert("El archivo seleccionado no es un archivo de plan válido.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearPlan() {
+            state.plannedCourses = {};
+            localStorage.removeItem('cpr_merida_plan_2026');
+            renderMetroMap();
+            renderSidebar();
+        }
+
+        /* 9. INTERACTIVE ACTIONS, INFO & MODAL LOGIC */
+        function toggleCleanMapMode() {
+            document.body.classList.toggle('clean-map-mode');
+        }
+
+        function toggleInfoModal() {
+            state.isInfoModalOpen = !state.isInfoModalOpen;
+            const modal = document.getElementById('info-modal');
+            const container = document.getElementById('info-modal-container');
+
+            if (state.isInfoModalOpen) {
+                modal.classList.remove('pointer-events-none', 'opacity-0');
+                container.classList.remove('scale-95');
+                container.classList.add('scale-100');
+            } else {
+                container.classList.remove('scale-100');
+                container.classList.add('scale-95');
+                modal.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        function openCourseModal(course) {
+            state.activeModalCourseCode = course.code;
+            const line = LINES_DATA[course.line];
+
+            document.getElementById('modal-header-bg').style.backgroundColor = line.color;
+            document.getElementById('modal-line-tag').innerHTML = `<i class="fa-solid fa-subway"></i> Línea ${line.id} · ${line.name}`;
+            document.getElementById('modal-course-code').textContent = `#${course.code}`;
+            document.getElementById('modal-course-title').textContent = course.name;
+            document.getElementById('modal-start-date').textContent = formatDateFull(course.start);
+            document.getElementById('modal-end-date').textContent = formatDateFull(course.end);
+
+            updateModalButtonState();
+
+            const modal = document.getElementById('course-modal');
+            const container = document.getElementById('modal-container');
+            modal.classList.remove('pointer-events-none', 'opacity-0');
+            container.classList.remove('translate-x-full');
+
+            renderMetroMap();
+        }
+
+        function openCourseModalByCode(code) {
+            const course = COURSES_DATA.find(c => c.code === code);
+            if (course) openCourseModal(course);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('course-modal');
+            const container = document.getElementById('modal-container');
+            container.classList.add('translate-x-full');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+
+            state.activeModalCourseCode = null;
+            renderMetroMap();
+        }
+
+        function updateModalButtonState() {
+            const btn = document.getElementById('btn-toggle-modal-plan');
+            const isPlanned = !!state.plannedCourses[state.activeModalCourseCode];
+
+            if (isPlanned) {
+                btn.className = "w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 text-white shadow-md transition-all";
+                btn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Quitar de Mi Plan Formativo`;
+            } else {
+                btn.className = "w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all";
+                btn.innerHTML = `<i class="fa-solid fa-plus"></i> Añadir a Mi Plan Formativo`;
+            }
+        }
+
+        function togglePlanFromModal() {
+            if (!state.activeModalCourseCode) return;
+            togglePlanCourse(state.activeModalCourseCode);
+            updateModalButtonState();
+        }
+
+        function togglePlanCourse(code) {
+            if (state.plannedCourses[code]) {
+                delete state.plannedCourses[code];
+            } else {
+                state.plannedCourses[code] = true;
+            }
+            localStorage.setItem('cpr_merida_plan_2026', JSON.stringify(state.plannedCourses));
+            
+            renderMetroMap();
+            renderSidebar();
+        }
+
+        function toggleLine(lineKey) {
+            state.visibleLines[lineKey] = !state.visibleLines[lineKey];
+            renderMetroMap();
+            renderSidebar();
+        }
+
+        function toggleSidebarLineAccordion(lineKey) {
+            if (state.expandedLines.has(lineKey)) {
+                state.expandedLines.delete(lineKey);
+            } else {
+                state.expandedLines.add(lineKey);
+            }
+            renderSidebar();
+        }
+
+        function setAppMode(mode) {
+            state.activeMode = mode;
+            ['map', 'plan'].forEach(m => {
+                const btn = document.getElementById(`tab-btn-${m}`);
+                if (m === mode) {
+                    btn.classList.add('bg-[var(--surface)]', 'text-[var(--fg)]', 'shadow-sm');
+                    btn.classList.remove('text-[var(--muted)]');
+                } else {
+                    btn.classList.remove('bg-[var(--surface)]', 'text-[var(--fg)]', 'shadow-sm');
+                    btn.classList.add('text-[var(--muted)]');
+                }
+            });
+            renderSidebar();
+        }
+
+        function updatePlanBadgeCount() {
+            const count = Object.keys(state.plannedCourses).length;
+            const badge = document.getElementById('plan-badge-count');
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function handleSearch(val) {
+            state.searchQuery = val;
+            const clearBtn = document.getElementById('clear-search-btn');
+            if (val.trim().length > 0) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+            renderSidebar();
+        }
+
+        function clearSearch() {
+            document.getElementById('sidebar-search-input').value = '';
+            handleSearch('');
+        }
+
+        function toggleTheme() {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', state.theme);
+            if (state.theme === 'dark') document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+            localStorage.setItem('cpr_theme', state.theme);
+        }
+
+        function toggleTrains() {
+            state.trainsEnabled = !state.trainsEnabled;
+            const btn = document.getElementById('btn-train-toggle');
+            if (state.trainsEnabled) {
+                btn.classList.add('bg-blue-50', 'dark:bg-blue-900/40', 'text-blue-600', 'dark:text-blue-300');
+            } else {
+                btn.classList.remove('bg-blue-50', 'dark:bg-blue-900/40', 'text-blue-600', 'dark:text-blue-300');
+            }
+            renderMetroMap();
+        }
+
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        /* 10. CANVAS PAN & ZOOM LOGIC */
+        function zoomIn() {
+            state.zoomLevel = Math.min(state.zoomLevel + 0.2, 2.5);
+            applyZoomTransform();
+        }
+
+        function zoomOut() {
+            state.zoomLevel = Math.max(state.zoomLevel - 0.2, 0.6);
+            applyZoomTransform();
+        }
+
+        function resetMapView() {
+            state.zoomLevel = 1;
+            state.panX = 0;
+            state.panY = 0;
+            applyZoomTransform();
+        }
+
+        function applyZoomTransform() {
+            const svg = document.getElementById('metro-svg');
+            svg.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoomLevel})`;
+        }
+
+        /* 11. UTILS & INITIALIZATION */
+        const MONTHS_SHORT = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+        
+        function formatDateShort(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+        }
+
+        function formatDateFull(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return `${d.getDate()} de ${MONTHS_SHORT[d.getMonth()]} de ${d.getFullYear()}`;
+        }
+
+        /* CALENDAR EXPORT HELPERS */
+        function formatDateForCal(isoDate, addDays = 0) {
+            if (!isoDate) return '';
+            const d = new Date(isoDate);
+            if (addDays) d.setDate(d.getDate() + addDays);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}${m}${day}`;
+        }
+
+        function getGoogleCalendarUrl(course) {
+            const line = LINES_DATA[course.line];
+            const startStr = formatDateForCal(course.start);
+            const endStr = formatDateForCal(course.end, 1);
+            const title = encodeURIComponent(`[CPR Mérida] ${course.name}`);
+            const details = encodeURIComponent(`Código de Actividad: #${course.code}\nLínea Formativa: L${line.id} - ${line.name}\nOrganiza: CPR de Mérida (Red Formativa 2026)`);
+            const location = encodeURIComponent('CPR de Mérida');
+            return `https://calendar.google.com/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&location=${location}`;
+        }
+
+        function generateIcsContent(courses) {
+            let ics = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//CPR Merida//Red Formativa 2026//ES',
+                'CALSCALE:GREGORIAN',
+                'METHOD:PUBLISH',
+                'X-WR-CALNAME:Plan Formativo CPR Mérida'
+            ];
+
+            courses.forEach(c => {
+                const line = LINES_DATA[c.line];
+                const startStr = formatDateForCal(c.start);
+                const endStr = formatDateForCal(c.end, 1);
+                const summary = `[CPR Mérida] ${c.name}`.replace(/,/g, '\\,');
+                const desc = `Código: #${c.code}\\nLínea: L${line.id} - ${line.name.replace(/,/g, '\\,')}\\nOrganiza: CPR de Mérida`.replace(/,/g, '\\,');
+
+                ics.push(
+                    'BEGIN:VEVENT',
+                    `UID:cpr-merida-${c.code}@cprmerida.es`,
+                    `DTSTAMP:${formatDateForCal(new Date().toISOString().slice(0, 10))}T000000Z`,
+                    `DTSTART;VALUE=DATE:${startStr}`,
+                    `DTEND;VALUE=DATE:${endStr}`,
+                    `SUMMARY:${summary}`,
+                    `DESCRIPTION:${desc}`,
+                    `LOCATION:CPR de Mérida`,
+                    'STATUS:CONFIRMED',
+                    'END:VEVENT'
+                );
+            });
+
+            ics.push('END:VCALENDAR');
+            return ics.join('\r\n');
+        }
+
+        function downloadIcsFile(courses, filename = 'plan_formativo_cpr_merida.ics') {
+            if (!courses || courses.length === 0) return;
+            const content = generateIcsContent(courses);
+            const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function addCurrentCourseToGoogleCalendar() {
+            if (!state.activeModalCourseCode) return;
+            const course = COURSES_DATA.find(c => c.code === state.activeModalCourseCode);
+            if (course) window.open(getGoogleCalendarUrl(course), '_blank');
+        }
+
+        function downloadCurrentCourseIcs() {
+            if (!state.activeModalCourseCode) return;
+            const course = COURSES_DATA.find(c => c.code === state.activeModalCourseCode);
+            if (course) downloadIcsFile([course], `curso_cpr_${course.code}.ics`);
+        }
+
+        function addCourseToGoogleCalendarByCode(code) {
+            const course = COURSES_DATA.find(c => c.code === code);
+            if (course) window.open(getGoogleCalendarUrl(course), '_blank');
+        }
+
+        function downloadCourseIcsByCode(code) {
+            const course = COURSES_DATA.find(c => c.code === code);
+            if (course) downloadIcsFile([course], `curso_cpr_${course.code}.ics`);
+        }
+
+        function downloadPlanIcs() {
+            const plannedCodes = Object.keys(state.plannedCourses);
+            const plannedList = COURSES_DATA.filter(c => plannedCodes.includes(c.code));
+            if (plannedList.length === 0) {
+                alert("Añade al menos un curso a tu plan para agendarlo.");
+                return;
+            }
+            downloadIcsFile(plannedList, 'mi_plan_cpr_merida_2026.ics');
+        }
+
+        function addPlanToGoogleCalendarPrompt() {
+            const plannedCodes = Object.keys(state.plannedCourses);
+            const plannedList = COURSES_DATA.filter(c => plannedCodes.includes(c.code));
+            if (plannedList.length === 0) {
+                alert("Añade al menos un curso a tu plan para agendarlo.");
+                return;
+            }
+            downloadIcsFile(plannedList, 'mi_plan_cpr_merida_2026.ics');
+            setTimeout(() => {
+                if (confirm("Se ha descargado el archivo de calendario (.ics) con todas tus actividades. ¿Quieres abrir Google Calendar para importarlo?")) {
+                    window.open("https://calendar.google.com/calendar/r/settings/export", "_blank");
+                }
+            }, 300);
+        }
+
+        window.onload = function() {
+            if (state.theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.classList.add('dark');
+            }
+
+            // Detect URL parameter for WordPress embed (e.g. ?clean=1 or ?embed=1)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('clean') === '1' || urlParams.get('embed') === '1' || urlParams.get('solomapa') === '1') {
+                document.body.classList.add('clean-map-mode');
+            }
+
+            computeCoursePositions();
+            renderMetroMap();
+            renderSidebar();
+
+            const viewport = document.getElementById('map-viewport');
+            viewport.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.station-group') || e.target.closest('.terminal')) return;
+                state.isDragging = true;
+                state.dragStartX = e.clientX - state.panX;
+                state.dragStartY = e.clientY - state.panY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!state.isDragging) return;
+                state.panX = e.clientX - state.dragStartX;
+                state.panY = e.clientY - state.dragStartY;
+                applyZoomTransform();
+            });
+
+            window.addEventListener('mouseup', () => {
+                state.isDragging = false;
+            });
+
+            viewport.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (e.deltaY < 0) zoomIn();
+                else zoomOut();
+            }, { passive: false });
+
+            // Close info modal on escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (state.isInfoModalOpen) toggleInfoModal();
+                    else closeModal();
+                }
+            });
+        };
+    </script>
+</body>
+</html>
